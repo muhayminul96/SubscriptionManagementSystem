@@ -10,7 +10,7 @@ class Plan(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.name} - ${self.price}"
+        return f"{self.name} - ${self.price_in_usd}"
 
     class Meta:
         ordering = ['price_in_usd']

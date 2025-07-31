@@ -6,7 +6,7 @@ from .models import Plan, Subscription, ExchangeRateLog
 class PlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = Plan
-        fields = ['id', 'name', 'price', 'duration_days']
+        fields = ['id', 'name', 'price_in_usd', 'duration_days']
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):

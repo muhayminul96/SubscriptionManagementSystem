@@ -1,75 +1,70 @@
-from rest_framework import status, generics
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework import status, generics, viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from django.db import transaction
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import get_object_or_404
+from django.views.generic import ListView
 from .models import Plan, Subscription, ExchangeRateLog
 from .serializers import PlanSerializer, SubscriptionSerializer, ExchangeRateSerializer
 
 
-# API Views
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def subscribe(request):
-    try:
-        plan_id = request.data.get('plan_id')
+# API ViewSets
+class PlanViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet for viewing subscription plans"""
+    queryset = Plan.objects.all()
+    serializer_class = PlanSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class SubscriptionViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing subscriptions"""
+    serializer_class = SubscriptionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Return subscriptions for the current user only"""
+        return Subscription.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        """Create subscription with proper validation"""
+        plan_id = self.request.data.get('plan_id')
         plan = get_object_or_404(Plan, id=plan_id)
 
         # Check if user already has an active subscription to this plan
         existing_sub = Subscription.objects.filter(
-            user=request.user,
+            user=self.request.user,
             plan=plan,
             status='active'
-        ).first()
+        ).exists()
 
         if existing_sub:
-            return Response(
-                {'error': 'You already have an active subscription to this plan'},
-                status=status.HTTP_400_BAD_REQUEST
+            raise serializers.ValidationError(
+                'You already have an active subscription to this plan'
             )
 
         with transaction.atomic():
-            subscription = Subscription.objects.create(
-                user=request.user,
-                plan=plan
+            serializer.save(user=self.request.user, plan=plan)
+
+    def create(self, request, *args, **kwargs):
+        """Custom create method with better response"""
+        try:
+            response = super().create(request, *args, **kwargs)
+            return Response({
+                'message': 'Subscription created successfully',
+                'subscription': response.data
+            }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
-        serializer = SubscriptionSerializer(subscription)
-        return Response({
-            'message': 'Subscription created successfully',
-            'subscription': serializer.data
-        }, status=status.HTTP_201_CREATED)
-
-    except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def list_subscriptions(request):
-    """List all subscriptions of the logged-in user"""
-    subscriptions = Subscription.objects.filter(user=request.user)
-    serializer = SubscriptionSerializer(subscriptions, many=True)
-    return Response({
-        'subscriptions': serializer.data
-    })
-
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def cancel_subscription(request):
-    """Cancel a subscription"""
-    try:
-        subscription_id = request.data.get('subscription_id')
-        subscription = get_object_or_404(
-            Subscription,
-            id=subscription_id,
-            user=request.user
-        )
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        """Cancel a subscription"""
+        subscription = self.get_object()
 
         if subscription.status != 'active':
             return Response(
@@ -82,39 +77,96 @@ def cancel_subscription(request):
             subscription.save()
 
         return Response({
-            'message': 'Subscription cancelled successfully'
+            'message': 'Subscription cancelled successfully',
+            'subscription': SubscriptionSerializer(subscription).data
         })
 
-    except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_400_BAD_REQUEST
-        )
+
+class ExchangeRateAPIView(APIView):
+    """API view for fetching exchange rates"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Fetch and return the latest exchange rate"""
+        base = request.query_params.get('base', 'USD')
+        target = request.query_params.get('target', 'BDT')
+
+        try:
+            service = ExchangeRateService()
+            rate_data = service.get_exchange_rate(base, target)
+
+            return Response({
+                'base_currency': base,
+                'target_currency': target,
+                'rate': rate_data['rate'],
+                'fetched_at': rate_data['fetched_at']
+            })
+
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
+class ExchangeRateLogViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet for viewing exchange rate history"""
+    queryset = ExchangeRateLog.objects.all()
+    serializer_class = ExchangeRateSerializer
+    permission_classes = [IsAuthenticated]
+    ordering = ['-fetched_at']
+
+
+# Frontend Class-Based Views
+class SubscriptionListView(ListView):
+    """Frontend view to display all subscriptions"""
+    model = Subscription
+    template_name = 'subscriptions/list.html'
+    context_object_name = 'subscriptions'
+    paginate_by = 20
+
+    def get_queryset(self):
+        """Get all subscriptions with related data"""
+        return Subscription.objects.select_related('user', 'plan').all().order_by('-created_at')
+
+    def get_context_data(self, **kwargs):
+        """Add extra context for statistics"""
+        context = super().get_context_data(**kwargs)
+
+        # Add subscription statistics
+        all_subscriptions = Subscription.objects.all()
+        context.update({
+            'total_subscriptions': all_subscriptions.count(),
+            'active_subscriptions': all_subscriptions.filter(status='active').count(),
+            'cancelled_subscriptions': all_subscriptions.filter(status='cancelled').count(),
+            'expired_subscriptions': all_subscriptions.filter(status='expired').count(),
+        })
+
+        return context
+
+
+# Legacy Function-Based Views for backward compatibility
+def subscribe(request):
+    """Redirect to ViewSet-based API"""
+    return Response({'message': 'Use /api/subscriptions/ endpoint'}, status=status.HTTP_301_MOVED_PERMANENTLY)
+
+
+def list_subscriptions(request):
+    """Redirect to ViewSet-based API"""
+    return Response({'message': 'Use /api/subscriptions/ endpoint'}, status=status.HTTP_301_MOVED_PERMANENTLY)
+
+
+def cancel_subscription(request):
+    """Redirect to ViewSet-based API"""
+    return Response({'message': 'Use /api/subscriptions/{id}/cancel/ endpoint'},
+                    status=status.HTTP_301_MOVED_PERMANENTLY)
+
+
 def get_exchange_rate(request):
-    """Fetch and return the latest exchange rate"""
-    base = request.GET.get('base', 'USD')
-    target = request.GET.get('target', 'BDT')
-
-    try:
-        service = ExchangeRateService()
-        rate_data = service.get_exchange_rate(base, target)
-
-        return Response({
-            'base_currency': base,
-            'target_currency': target,
-            'rate': rate_data['rate'],
-            'fetched_at': rate_data['fetched_at']
-        })
-
-    except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_400_BAD_REQUEST
-        )
+    """Redirect to Class-based API"""
+    return Response({'message': 'Use /api/exchange-rate/ endpoint'}, status=status.HTTP_301_MOVED_PERMANENTLY)
 
 
-
+def subscriptions_list(request):
+    """Redirect to Class-based view"""
+    return SubscriptionListView.as_view()(request)
