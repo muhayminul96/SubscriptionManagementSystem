@@ -31,15 +31,21 @@ A Django-based system to manage user subscriptions and monitor real-time currenc
 ```bash
 git clone https://github.com/muhayminul96/SubscriptionManagementSystem.git
 cd subscription-system
+```
+```bash
 python -m venv venv
 source venv/bin/activate  # or venv\Scripts\activate on Windows
-
+```
+```bash
 pip install -r requirements.txt
-
+```
+```bash
 python manage.py migrate
-
+```
+```bash
 python manage.py createsuperuser
-
+```
+```bash
 python manage.py runserver
 ```
 
