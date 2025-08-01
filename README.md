@@ -1,10 +1,10 @@
-# 🧾 Subscription Management System with Currency Exchange Tracker
+# Subscription Management System with Currency Exchange Tracker
 
 A Django-based system to manage user subscriptions and monitor real-time currency exchange rates.
 
 ---
 
-## 🚀 Features
+## Features
 
 - User subscriptions to plans (duration-based)
 - JWT-authenticated REST APIs
@@ -16,7 +16,7 @@ A Django-based system to manage user subscriptions and monitor real-time currenc
 
 ---
 
-## 🛠 Tech Stack
+## Tech Stack
 
 - Django + DRF
 - SQLite
@@ -26,7 +26,7 @@ A Django-based system to manage user subscriptions and monitor real-time currenc
 
 ---
 
-## 🧩 Installation & Local Setup
+##  Installation & Local Setup
 
 ```bash
 git clone https://github.com/muhayminul96/SubscriptionManagementSystem.git
@@ -49,13 +49,13 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
-## 🔗 API Endpoints
+## API Endpoints
 
 All endpoints are under the `/api/` namespace and require **JWT authentication** unless otherwise noted.
 
 ---
 
-### 🔐 Authentication
+###  Authentication
 
 #### POST `/api/token/`
 Obtain JWT access and refresh tokens.
@@ -85,9 +85,12 @@ Response:
   "access": "<new_access_token>"
 }
 ```
+### Plan
 #### GET /api/plans/
 Returns a list of all available subscription plans.
 
+
+### Subscriptions
 #### GET /api/subscriptions/
 List all subscriptions for the currently authenticated user.
 
@@ -132,6 +135,7 @@ Response:
   }
 }
 ```
+### Exchange Rate
 
 #### GET /api/exchange-rate/?base=USD&target=BDT
 
