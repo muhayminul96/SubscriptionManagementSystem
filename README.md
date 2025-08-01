@@ -42,3 +42,30 @@ python manage.py createsuperuser
 
 python manage.py runserver
 
+
+## 🔗 API Endpoints
+
+All endpoints are under the `/api/` namespace and require **JWT authentication** unless otherwise noted.
+
+---
+
+### 🔐 Authentication
+
+#### POST `/api/token/`
+Obtain JWT access and refresh tokens.
+```json
+Request:
+{
+  "username": "yourusername",
+  "password": "yourpassword"
+}
+
+Response:
+{
+  "access": "<access_token>",
+  "refresh": "<refresh_token>"
+}
+json```
+POST /api/token/refresh/
+
+
