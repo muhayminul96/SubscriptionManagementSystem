@@ -12,7 +12,7 @@ A Django-based system to manage user subscriptions and monitor real-time currenc
 - Background exchange rate fetcher via Celery + Redis
 - Admin interface for plans, subscriptions, and exchange logs
 - Bootstrap-powered frontend `/subscriptions/` view (public)
-- Optional Docker support (if needed)
+
 
 ---
 
@@ -149,6 +149,43 @@ Response:
   "rate": 109.76,
   "fetched_at": "2025-07-31T11:00:00Z"
 }
+```
+
+#### GET /api/exchange-logs/
+
+Return all exchange log
+
+```json
+Response:
+[
+    {
+        "base_currency": "USD",
+        "target_currency": "BDT",
+        "rate": "122.332100",
+        "fetched_at": "2025-08-01T17:25:02.956943Z"
+    },
+    {
+        "base_currency": "USD",
+        "target_currency": "BDT",
+        "rate": "122.332100",
+        "fetched_at": "2025-08-01T13:25:00.439751Z"
+    },
+    {
+        "base_currency": "USD",
+        "target_currency": "BDT",
+        "rate": "122.332100",
+        "fetched_at": "2025-08-01T13:16:20.762177Z"
+    },
+    {
+        "base_currency": "USD",
+        "target_currency": "BDT",
+        "rate": "122.332100",
+        "fetched_at": "2025-08-01T11:25:00.373502Z"
+    },
+   
+   
+]
+
 ```
 
 
