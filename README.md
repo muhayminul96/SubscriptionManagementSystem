@@ -79,5 +79,68 @@ Response:
   "access": "<new_access_token>"
 }
 ```
+#### GET /api/plans/
+Returns a list of all available subscription plans.
+
+#### GET /api/subscriptions/
+List all subscriptions for the currently authenticated user.
+
+#### POST /api/subscriptions/
+Subscribe to a plan.
+```json
+Request:
+{
+  "plan_id": 1
+}
+
+Response:
+{
+  "message": "Subscription created successfully",
+  "subscription": {
+    "id": 6,
+    "user": {...},
+    "plan": {...},
+    "start_date": "...",
+    "end_date": "...",
+    "status": "active"
+  }
+}
+```
+#### POST /api/cancel/
+Cancel a subscription.
+
+```json 
+Request:
+{
+  "plan_id": 1
+}
+
+
+Response:
+{
+  "message": "Subscription cancelled successfully",
+  "subscription": {
+    "id": 6,
+    "status": "cancelled"
+    ...
+  }
+}
+```
+
+#### GET /api/exchange-rate/?base=USD&target=BDT
+
+Fetch and return the latest exchange rate between currencies.
+
+```json
+Response:
+{
+  "base_currency": "USD",
+  "target_currency": "BDT",
+  "rate": 109.76,
+  "fetched_at": "2025-07-31T11:00:00Z"
+}
+```
+
+
 
 
