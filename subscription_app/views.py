@@ -1,5 +1,8 @@
-from rest_framework import status, generics, viewsets
-from rest_framework.decorators import action
+import json
+
+from rest_framework import status, generics, viewsets, serializers
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.decorators import action, permission_classes, api_view
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -8,6 +11,7 @@ from django.shortcuts import get_object_or_404
 from django.views.generic import ListView
 from .models import Plan, Subscription, ExchangeRateLog
 from .serializers import PlanSerializer, SubscriptionSerializer, ExchangeRateSerializer
+from django.http import JsonResponse
 
 
 # API ViewSets
@@ -28,6 +32,7 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
         return Subscription.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
+        print("user")
         """Create subscription with proper validation"""
         plan_id = self.request.data.get('plan_id')
         plan = get_object_or_404(Plan, id=plan_id)
@@ -64,10 +69,17 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def cancel(self, request, pk=None):
         """Cancel a subscription"""
-        subscription = self.get_object()
+        subscription_id = self.request.data.get('subscription_id')
+        print(subscription_id)
+        subscription = get_object_or_404(Subscription, pk=subscription_id, user=request.user)
+        if not subscription:
+            return JsonResponse(
+                {'error': 'subscriptions not found'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        if subscription.status != 'active':
-            return Response(
+        elif subscription.status != 'active':
+            return JsonResponse(
                 {'error': 'Only active subscriptions can be cancelled'},
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -144,27 +156,47 @@ class SubscriptionListView(ListView):
 
         return context
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def cancel_subscription_api(request):
+    subscription_id = request.data.get('subscription_id')
+    if not subscription_id:
+        return Response({'error': 'subscription_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    subscription = get_object_or_404(Subscription, pk=subscription_id, user=request.user)
+
+    if subscription.status != 'active':
+        return Response({'error': 'Only active subscriptions can be cancelled'}, status=status.HTTP_400_BAD_REQUEST)
+
+    with transaction.atomic():
+        subscription.status = 'cancelled'
+        subscription.save()
+
+    serializer = SubscriptionSerializer(subscription)
+    return Response({
+        'message': 'Subscription cancelled successfully',
+        'subscription': serializer.data
+    })
 
 # Legacy Function-Based Views for backward compatibility
 def subscribe(request):
     """Redirect to ViewSet-based API"""
-    return Response({'message': 'Use /api/subscriptions/ endpoint'}, status=status.HTTP_301_MOVED_PERMANENTLY)
+    return JsonResponse({'message': 'Use /api/subscriptions/ endpoint'}, status=status.HTTP_301_MOVED_PERMANENTLY)
 
 
 def list_subscriptions(request):
     """Redirect to ViewSet-based API"""
-    return Response({'message': 'Use /api/subscriptions/ endpoint'}, status=status.HTTP_301_MOVED_PERMANENTLY)
+    return JsonResponse({'message': 'Use /api/subscriptions/ endpoint'}, status=status.HTTP_301_MOVED_PERMANENTLY)
 
-
+@csrf_exempt
 def cancel_subscription(request):
-    """Redirect to ViewSet-based API"""
-    return Response({'message': 'Use /api/subscriptions/{id}/cancel/ endpoint'},
+    return JsonResponse({'message': 'Use /api/subscriptions/{plan_id}/cancel/ endpoint'},
                     status=status.HTTP_301_MOVED_PERMANENTLY)
 
 
 def get_exchange_rate(request):
     """Redirect to Class-based API"""
-    return Response({'message': 'Use /api/exchange-rate/ endpoint'}, status=status.HTTP_301_MOVED_PERMANENTLY)
+    return JsonResponse({'message': 'Use /api/exchange-rate/ endpoint'}, status=status.HTTP_301_MOVED_PERMANENTLY)
 
 
 def subscriptions_list(request):

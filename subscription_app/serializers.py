@@ -13,6 +13,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     plan = PlanSerializer(read_only=True)
     plan_id = serializers.IntegerField(write_only=True)
 
+
     class Meta:
         model = Subscription
         fields = ['id', 'plan', 'plan_id', 'start_date', 'end_date', 'status', 'created_at']

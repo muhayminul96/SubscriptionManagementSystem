@@ -18,5 +18,5 @@ urlpatterns = [
 
     # Legacy endpoints (for backward compatibility)
     path('api/subscribe/', views.subscribe, name='api_subscribe'),
-    path('api/cancel/', views.cancel_subscription, name='api_cancel'),
+    path('api/cancel/', views.cancel_subscription_api, name='api_cancel'),
 ]
