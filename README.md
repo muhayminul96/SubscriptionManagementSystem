@@ -65,7 +65,19 @@ Response:
   "access": "<access_token>",
   "refresh": "<refresh_token>"
 }
-json```
+```
 POST /api/token/refresh/
+
+```json 
+Request:
+{
+  "refresh": "<your_refresh_token>"
+}
+
+Response:
+{
+  "access": "<new_access_token>"
+}
+```
 
 
