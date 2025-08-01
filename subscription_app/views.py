@@ -10,6 +10,7 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.views.generic import ListView
 from .models import Plan, Subscription, ExchangeRateLog
+from .services import ExchangeRateService
 from .serializers import PlanSerializer, SubscriptionSerializer, ExchangeRateSerializer
 from django.http import JsonResponse
 
@@ -105,7 +106,8 @@ class ExchangeRateAPIView(APIView):
 
         try:
             service = ExchangeRateService()
-            rate_data = service.get_exchange_rate(base, target)
+            # rate_data = service.get_exchange_rate(base, target)
+            rate_data = service.get_and_save_rate(base, target)
 
             return Response({
                 'base_currency': base,
@@ -177,6 +179,45 @@ def cancel_subscription_api(request):
         'message': 'Subscription cancelled successfully',
         'subscription': serializer.data
     })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def exchange_rate_view(request):
+    base = request.query_params.get('base')
+    target = request.query_params.get('target')
+
+    if not base or not target:
+        return Response({'error': 'base and target currencies are required'}, status=400)
+
+    # Example API call (use your real API key here)
+    url = f"https://v6.exchangerate-api.com/v6/YOUR_API_KEY/pair/{base}/{target}"
+    response = requests.get(url)
+
+    if response.status_code != 200:
+        return Response({'error': 'Failed to fetch exchange rate'}, status=500)
+
+    data = response.json()
+    rate = data.get('conversion_rate')
+
+    if not rate:
+        return Response({'error': 'Invalid response from exchange rate API'}, status=500)
+
+    # Log to DB
+    ExchangeRateLog.objects.create(
+        user=request.user,
+        base_currency=base,
+        target_currency=target,
+        rate=rate
+    )
+
+    return Response({
+        'base': base,
+        'target': target,
+        'rate': rate
+    }, status=200)
+
+
 
 # Legacy Function-Based Views for backward compatibility
 def subscribe(request):

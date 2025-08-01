@@ -16,6 +16,7 @@ urlpatterns = [
     # Frontend views using CBVs
     path('subscriptions/', views.SubscriptionListView.as_view(), name='subscriptions_list'),
 
+    # path('api/exchange-rate/', views.exchange_rate_view),
     # Legacy endpoints (for backward compatibility)
     path('api/subscribe/', views.subscribe, name='api_subscribe'),
     path('api/cancel/', views.cancel_subscription_api, name='api_cancel'),
